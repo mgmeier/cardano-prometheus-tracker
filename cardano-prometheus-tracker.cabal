@@ -1,0 +1,50 @@
+cabal-version:      3.0
+name:               cardano-prometheus-tracker
+version:            0.1.0.0
+
+license:            Unlicense
+license-file:       LICENSE
+author:             Michael Karg
+maintainer:         mgoremeier@gmail.com
+
+category:           Web
+build-type:         Simple
+extra-doc-files:    CHANGELOG.md
+
+common warnings
+    ghc-options: -Wall
+
+library
+    import:           warnings
+    exposed-modules:  Network.HTTP.PrometheusTracker
+                      Network.HTTP.PrometheusTracker.Types
+                      Network.HTTP.PrometheusTracker.Utils
+
+    default-extensions: LambdaCase
+
+    build-depends:      base >= 4.18
+                      , aeson
+                      , aeson-pretty
+                      , bytestring
+                      , containers
+                      , directory
+                      , filepath
+                      , http-client
+                      , text
+                      , time
+    hs-source-dirs:   src
+    default-language: Haskell2010
+
+executable cardano-prometheus-tracker
+    import:           warnings
+    main-is:          Main.hs
+    -- other-modules:
+    -- other-extensions:
+    build-depends:
+          base >= 4.18
+        , http-client
+        , optparse-applicative
+        , cardano-prometheus-tracker
+
+    hs-source-dirs:   app
+    default-language: Haskell2010
