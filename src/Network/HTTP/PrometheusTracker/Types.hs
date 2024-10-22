@@ -36,3 +36,4 @@ data ScrapeConfig = ScrapeConfig
   { scrapeSeconds :: Int
   , scrapeUrl     :: String
   }
+  deriving Show
