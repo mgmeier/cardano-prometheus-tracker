@@ -11,7 +11,15 @@ import           Network.HTTP.PrometheusTracker.Types
 data Command =
       CScrape           !ScrapeConfig
     | CSummary          !FilePath
+    | CCompare          !FilePath        !FilePath
+    | CPlot             !MetricInSummary !MetricInSummary
+    | CNames            !FilePath
     deriving Show
+
+data MetricInSummary = MetricInSummary {misFile :: !FilePath, misName :: !String}
+
+instance Show MetricInSummary where
+  show (MetricInSummary f n) = f ++ ":" ++ n
 
 
 getOpts :: IO Command
@@ -21,8 +29,12 @@ parseCLI :: Parser Command
 parseCLI = subparser $ mconcat
   [ op "scrape" "Scrape a Prometheus URL"
       (CScrape <$> parseScrapeConfig)
-  , op "summarize" "Join all scraped JSONs in `cwd` into a summary"
+  , op "summarize" "Join all scraped JSONs in $PWD into a summary"
       (CSummary <$> parseOutFileName "output JSON file")
+  , op "compare" "Print comparison between two summaries to stdout"
+      (CCompare <$> parseSummaryFileName "FILE1" <*> parseSummaryFileName "FILE2")
+  , op "names" "List all metrics names observed in summary to stdout"
+      (CNames <$> parseSummaryFileName "FILE")
   ]
   where
     op :: String -> String -> Parser a -> Mod CommandFields a
@@ -48,6 +60,14 @@ parseCLI = subparser $ mconcat
       (mconcat
         [ metavar "FILE"
         , help helpText
+        ])
+
+    parseSummaryFileName :: String -> Parser FilePath
+    parseSummaryFileName meta = strArgument
+      (mconcat
+        [ metavar meta
+        , action "file"
+        , help "summary JSON"
         ])
 
     parseURL :: Parser String

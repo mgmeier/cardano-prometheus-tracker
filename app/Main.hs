@@ -16,14 +16,20 @@ import           CLI
 main :: IO ()
 main = getOpts >>= \case
 
-  CSummary _outFile -> do
+  CSummary outfile -> do
     scrapes <- listScrapeFiles
     if null scrapes
       then putStrLn "--> no scrape JSON files found"
-      else putStrLn $ "--> summarizing " ++ show (length scrapes) ++ " scrape JSON files"
+      else createSummaryFromScrapes outfile
 
   CScrape conf -> do
     putStrLn $ "--> looking for Prometheus metrics at: " ++ scrapeUrl conf
     putStrLn   "--> hit Ctrl-C to quit, or wait for the scraper to auto-exit..."
     manager <- newManager defaultManagerSettings
     scrapeWhileValid manager conf
+
+  CCompare f1 f2 -> compareSummaries f1 f2
+
+  CNames f -> printNames f
+
+  cmd -> putStrLn $ "not implemented: " ++ show cmd

@@ -1,9 +1,14 @@
-{-# LANGUAGE DerivingVia #-}
+{-# LANGUAGE DeriveAnyClass #-}
+{-# LANGUAGE DeriveGeneric  #-}
+{-# LANGUAGE DerivingVia    #-}
 
 module Network.HTTP.PrometheusTracker.Types where
 
+import           GHC.Generics        (Generic)
+
 import           Control.Applicative
 import           Data.Aeson          (FromJSON (..), ToJSON (..))
+import           Data.Function       (on)
 import           Data.Map.Strict     as M (Map, null)
 import           Data.Text           (Text)
 
@@ -37,3 +42,15 @@ data ScrapeConfig = ScrapeConfig
   , scrapeUrl     :: String
   }
   deriving Show
+
+data Scrape = Scrape
+  { scrape :: !MetricsMap
+  , offset :: !Int
+  }
+  deriving (Generic, Show, FromJSON, ToJSON)
+
+instance Eq Scrape where
+  (==) = (==) `on` offset
+
+instance Ord Scrape where
+  compare = compare `on` offset

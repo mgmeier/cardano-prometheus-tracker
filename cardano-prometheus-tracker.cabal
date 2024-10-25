@@ -17,6 +17,7 @@ common warnings
 library
     import:           warnings
     exposed-modules:  Network.HTTP.PrometheusTracker
+                      Network.HTTP.PrometheusTracker.Summary
                       Network.HTTP.PrometheusTracker.Types
                       Network.HTTP.PrometheusTracker.Utils
 

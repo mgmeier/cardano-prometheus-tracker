@@ -3,26 +3,28 @@
 {-# LANGUAGE RecordWildCards    #-}
 {-# LANGUAGE ViewPatterns       #-}
 
-module Network.HTTP.PrometheusTracker (scrapeWhileValid) where
+module Network.HTTP.PrometheusTracker
+       ( scrapeWhileValid
+       , module ReExport
+       ) where
 
 import           Control.Applicative
-import           Control.Concurrent                   (threadDelay)
+import           Control.Concurrent                     (threadDelay)
 import           Control.Exception
 import           Control.Monad
-import           Data.Aeson.Encode.Pretty
-import           Data.ByteString.Lazy                 as BL (writeFile)
 import           Data.Char
 import           Data.Either
-import qualified Data.Map.Strict                      as M
+import qualified Data.Map.Strict                        as M
 import           Data.Maybe
-import           Data.Text                            as T (Text)
-import qualified Data.Text.Lazy                       as TL
-import qualified Data.Text.Lazy.Encoding              as TL (decodeUtf8')
-import qualified Data.Text.Lazy.Read                  as TL
+import           Data.Text                              as T (Text)
+import qualified Data.Text.Lazy                         as TL
+import qualified Data.Text.Lazy.Encoding                as TL (decodeUtf8')
+import qualified Data.Text.Lazy.Read                    as TL
 import           Data.Time.Clock.POSIX
 import           Network.HTTP.Client
-import           System.Directory                     (removeFile)
+import           System.Directory                       (removeFile)
 
+import           Network.HTTP.PrometheusTracker.Summary as ReExport
 import           Network.HTTP.PrometheusTracker.Types
 import           Network.HTTP.PrometheusTracker.Utils
 
@@ -65,9 +67,6 @@ scrapeWhileValid :: Manager -> ScrapeConfig -> IO ()
 scrapeWhileValid manager ScrapeConfig{..} =
     go `catch` handler
   where
-    prettyConfig :: Config
-    prettyConfig = defConfig { confCompare = compare, confTrailingNewline = True }
-
     handler (SomeException e) = do
       print e
       putStrLn "\n--> assuming no more data will follow; quitting..."
@@ -80,9 +79,7 @@ scrapeWhileValid manager ScrapeConfig{..} =
         loop n = do
           response <- httpLbs request manager
 
-          let
-              parse   = parsePrometheus $ fromRight TL.empty $ TL.decodeUtf8' $ responseBody response
-              output  = encodePretty' prettyConfig parse
+          let parse = parsePrometheus $ fromRight TL.empty $ TL.decodeUtf8' $ responseBody response
 
           if mmNull parse
             then delay >> loop (n + 1)
@@ -90,7 +87,7 @@ scrapeWhileValid manager ScrapeConfig{..} =
               now <- round <$> getPOSIXTime
               let
                   fn = "scrape-" ++ show (now :: Int) ++ ".json"
-              BL.writeFile fn output
+              writeFilePretty fn parse
               delay
               loop 0
 
