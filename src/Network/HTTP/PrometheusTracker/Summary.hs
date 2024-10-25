@@ -9,14 +9,18 @@ module Network.HTTP.PrometheusTracker.Summary
        ) where
 
 import           Control.Applicative
+import           Control.Monad
 import           Data.Aeson                           (decodeFileStrict',
                                                        eitherDecodeFileStrict')
-import           Data.List                            (sort)
+import           Data.List                            (maximumBy, sort)
 import qualified Data.Map.Strict                      as M
 import           Data.Maybe
+import           Data.Ord
+import           Data.Ratio
 import qualified Data.Set                             as S
-import           Data.Text                            (Text)
+import           Data.Text                            as T (Text, justifyLeft)
 import qualified Data.Text.IO                         as T (putStrLn)
+import           Data.Text.Metrics                    (levenshteinNorm)
 
 import           Network.HTTP.PrometheusTracker.Types
 import           Network.HTTP.PrometheusTracker.Utils
@@ -72,14 +76,22 @@ compareSummaries f1 f2 = do
     renderComparison (S.fromList . getNames -> s1) (S.fromList . getNames -> s2) = do
 
       putStrLn $ "--> metrics in " ++ f1 ++ " but not in " ++ f2
-      mapM_ T.putStrLn $ S.toAscList onlyInM1
+      mapM_ T.putStrLn onlyInM1
 
       putStrLn $ "\n--> metrics in " ++ f2 ++ " but not in " ++ f1
-      mapM_ T.putStrLn $ S.toAscList onlyInM2
+      mapM_ T.putStrLn onlyInM2
+
+      putStrLn $ "\n--> Suggestions for metrics in " ++ f1 ++ ", possibly matching metrics in " ++ f2
+      forM_ onlyInM1 $ \inM1 -> do
+        let
+            t1 = T.justifyLeft 40 ' ' inM1
+            sugg = fromMaybe "<no suggestion>" (suggestion inM1 allM2)
+        T.putStrLn $ t1 <> " --> " <> sugg
 
       where
-        onlyInM1 = s1 `S.difference` s2
-        onlyInM2 = s2 `S.difference` s1
+        allM2    = S.toList s2
+        onlyInM1 = S.toAscList $ s1 `S.difference` s2
+        onlyInM2 = S.toAscList $ s2 `S.difference` s1
 
 printNames :: FilePath -> IO ()
 printNames fn =
@@ -92,3 +104,12 @@ printNames fn =
 
 getNames :: [Scrape] -> [Text]
 getNames (last -> Scrape{scrape = MM mm}) = M.keys mm
+
+suggestion :: Text -> [Text] -> Maybe Text
+suggestion _ [] = Nothing
+suggestion t ts
+  | score > 53 % 100 = Just closest
+  | otherwise        = Nothing
+  where
+    distances        = [(candidate, levenshteinNorm t candidate) | candidate <- ts]
+    (closest, score) = maximumBy (comparing snd) distances
